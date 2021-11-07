@@ -1,2 +1,4 @@
 [deps]
+Genie = "c43c736e-a2d1-11e8-161f-af95117fbd1e"
 LightsAPI = "2c661533-41a9-4a4d-b932-b3a90830cb16"
+Stipple = "4acbeb90-81a0-11ea-1966-bdaff8155998"
