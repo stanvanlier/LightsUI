@@ -1,0 +1,4 @@
+name = "LightsAPI"
+uuid = "2c661533-41a9-4a4d-b932-b3a90830cb16"
+authors = ["Stan van Lier <vlierdata@gmail.com>"]
+version = "0.1.0"
