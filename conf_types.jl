@@ -46,21 +46,15 @@ end
 #end
 #RandomOff(lightid) = RandomOff(lightid, 0.5) # 50-50 as default
 
-struct Img
-  src::String
-  caption::String
-end
-
 struct Switch
   text::String
   color::String
 	icon::String
-  img::Img
   lights::Vector{LightSetting}
 end
 
 function handle(s::Switch)
-  for ls in lights
+  for ls in s.lights
     handle(ls)
   end
 end

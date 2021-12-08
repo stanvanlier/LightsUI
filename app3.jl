@@ -15,34 +15,46 @@ end
 
 const model = Stipple.init(ButtonState())
 
-const last_click_time = Ref(time())
+#function handle(switch_i::LoopingSwitch)
+#  switch = conf.switches[i]
+#  for lightsetting in switch.lights
+#    handle(lightsetting)
+#  end
+#end
+
+const last_click_time = Ref(Base.time())
 function clicked(i)
-  print("clicked start ", i)
-	timediff = time() - last_click_time[]
-  println(" ",timediff)
-	if timediff > 1.3
-		last_click_time[] = time()
-    LightsAPI.greet()
-		println("$timediff, TODO handle $(conf.switches[i].sequence[model.states[][i]])")
-    #handle(conf.switches[i].sequence[model.states[][i]])
+  try
+    print("clicked $(conf.switches[i].sequence[model.states[][i]].text) $i-$(model.states[][i]) start ", i)
+    timediff = Base.time() - last_click_time[]
+    println(" last click since ",timediff, " seconds")
+    if timediff > 1.3
+      last_click_time[] = Base.time()
+      #LightsAPI.greet()
+      #println("$timediff, TODO handle $(conf.switches[i].sequence[model.states[][i]])")
+      #LightsAPI.handle(conf.switches[i].sequence[model.states[][i]])
+      handle(conf.switches[i].sequence[model.states[][i]])
 
-		x = mod1(model.states[][i] + 1, length(conf.switches[i].sequence))
-		model.states[][i] = x
-		model.states[] = model.states[]
+      x = mod1(model.states[][i] + 1, length(conf.switches[i].sequence))
+      model.states[][i] = x
+      model.states[] = model.states[]
 
-		model.texts[][i] = conf.switches[i].sequence[x].text
-		model.texts[] = model.texts[]
+      model.texts[][i] = conf.switches[i].sequence[x].text
+      model.texts[] = model.texts[]
 
-		model.colors[][i] = conf.switches[i].sequence[x].color
-		model.colors[] = model.colors[]
+      model.colors[][i] = conf.switches[i].sequence[x].color
+      model.colors[] = model.colors[]
 
-		model.icons[][i] = conf.switches[i].sequence[x].icon
-		model.icons[] = model.icons[]
-	end
+      model.icons[][i] = conf.switches[i].sequence[x].icon
+      model.icons[] = model.icons[]
+    end
+  catch e
+    println(e)
+  end
 end
 
 on(model.clicked_on) do i
-  println("clicked_on ",i)
+  #println("clicked_on ",i)
   if model.clicked_on[] != 0
     clicked(i)
     model.clicked_on[] = 0

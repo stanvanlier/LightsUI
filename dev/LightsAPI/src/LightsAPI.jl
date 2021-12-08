@@ -17,10 +17,10 @@ struct LightState
   on::Ref{Bool}
 end
 
-function LightState(name, total_intensity_seconds=10.0)
+function LightState(name, total_intensity_seconds=4.0)
   return LightState(name,
-                    isfile("signals/$name.light/on.txt") ? vec(readdlm("signals/$name.light/on.txt", UInt)) : Vector{UInt}() ,
-                    isfile("signals/$name.light/off.txt") ? vec(readdlm("signals/$name.light/off.txt", UInt)) : Vector{UInt}() ,
+                    isfile("$(dirname(@__DIR__))/signals/$name.light/on.txt") ? vec(readdlm("$(dirname(@__DIR__))/signals/$name.light/on.txt", UInt)) : Vector{UInt}() ,
+                    isfile("$(dirname(@__DIR__))/signals/$name.light/off.txt") ? vec(readdlm("$(dirname(@__DIR__))/signals/$name.light/off.txt", UInt)) : Vector{UInt}() ,
                     total_intensity_seconds, #TODO total light change time
                     #total_intensity_seconds, #TODO inintal light state
                     0., #TODO inintal light state
@@ -28,14 +28,14 @@ function LightState(name, total_intensity_seconds=10.0)
                     false)
 end
 
-ison(s::LightState) = s.on
-isoff(s::LightState) = !s.on
+ison(s::LightState) = s.on[]
+isoff(s::LightState) = !s.on[]
 intensity(s::LightState) = s.curr_intensity
 direction(s::LightState) = s.curr_direction
 
 const lightstates = let
   s = Dict{Symbol,LightState}()
-  for d in readdir("signals")
+  for d in readdir("$(dirname(@__DIR__))/signals")
     if endswith(d, ".light")
       name = split(d,'.')[1]
       s[Symbol(name)] = LightState(name)
@@ -44,6 +44,7 @@ const lightstates = let
   s
 end
 
+# not used?
 ison(s::Symbol) = ison(lightstates[s])
 isoff(s::Symbol) = isoff(lightstates[s])
 intensity(s::Symbol) = intensity(lightstates[s])
@@ -86,8 +87,16 @@ function send_signal(s::Vector{UInt})
   rflow()
 end
 
-handle(spec::ChangeSpec{On}) = send_signal(spec.lightstate.on_signal)
-handle(spec::ChangeSpec{Off}) = send_signal(spec.lightstate.off_signal)
+function handle(spec::ChangeSpec{On})
+  send_signal(spec.lightstate.on_signal)
+  spec.lightstate.on[] = true
+end
+function handle(spec::ChangeSpec{Off})
+  send_signal(spec.lightstate.off_signal)
+  # send off signal twice to be sure its off
+  send_signal(spec.lightstate.off_signal)
+  spec.lightstate.on[] = false
+end
 function handle(spec::ChangeSpec{IntensityStart})
   send_signal(spec.lightstate.on_signal)
   spec.change.starttime[] = time()
@@ -118,10 +127,14 @@ end
 #const rf_send_queue = Channel{ChangeSpec}(Inf,; spawn=true, taskref=rf_send_task) do ch
 const rf_send_queue = Channel{ChangeSpec}(Inf)
 const rf_send_task = Threads.@spawn begin
-  println("queue sender started")
-  for spec in rf_send_queue
-    println("Got changespec to send: ", typeof(spec))
-    handle(spec)
+  try
+    println("queue sender started")
+    for spec in rf_send_queue
+      println("Got changespec to send: ", typeof(spec))
+      handle(spec)
+    end
+  catch e
+    println(e)
   end
 end
 
@@ -137,23 +150,26 @@ end
 
 
 on(l::LightState) = l.on[] || put!(rf_send_queue, ChangeSpec(l, On()))
-off(l::LightState) = put!(rf_send_queue, ChangeSpec(l, Off()))
+off(l::LightState) = put!(rf_send_queue, ChangeSpec(l, Off())) 
 function set_intensity(l::LightState, intensity::Float64) 
+  # make sure lamp is turned on
   on(l)
   intensity = l.total_intensity_seconds*intensity
   sleeptime = waitfor(intensity, l.curr_intensity[], l.total_intensity_seconds,l.curr_direction[])
   if sleeptime > 0.5  # some threshold, since this light difference is probably
                       # not noticable and will may be to fast for the lights to
                       # understand.
-    starttime = Ref{Float64}()
-    put!(rf_send_queue, ChangeSpec(l, IntensityStart(starttime)))
+    starttime_catch = Ref{Float64}()
+    put!(rf_send_queue, ChangeSpec(l, IntensityStart(starttime_catch)))
     sleep(sleeptime)
-    put!(rf_send_queue, ChangeSpec(l, IntensityStop(starttime)))
+    put!(rf_send_queue, ChangeSpec(l, IntensityStop(starttime_catch)))
   end
   nothing
 end
+
 reset(l::LightState) = put!(rf_send_queue, ChangeSpec(l, Reset()))
 
+#not used?
 on(l::Symbol) = on(lightstates[l])
 off(l::Symbol) = off(lightstates[l])
 set_intensity(l::Symbol, i::Float64) = set_intensity(lightstates[l], i)

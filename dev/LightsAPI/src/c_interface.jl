@@ -5,7 +5,7 @@ export rfhigh, rflow, screenon, screenoff
 
 # RF433 signal controll 
 
-const rflib = dlopen("c/rf_sender.so")
+const rflib = dlopen("$(@__DIR__)/c/rf_sender.so")
 
 const Chigh = dlsym(rflib, :high)
 const Clow = dlsym(rflib, :low)
@@ -15,7 +15,7 @@ rflow() = ccall(Clow, Cvoid, ())
 
 # screen backlight controll 
 
-const screenlib = dlopen("c/screen_backlight.so")
+const screenlib = dlopen("$(@__DIR__)/c/screen_backlight.so")
 
 const Cscreenon = dlsym(screenlib, :screenon)
 const Cscreenoff = dlsym(screenlib, :screenoff)
