@@ -31,7 +31,7 @@ handle(s::RandomIntensity) = begin
   rangesize = last(s.range)-first(s.range)
   i = rand()*rangesize + first(s.range)
   println(s.lightid, " random to ", i)
-  LightAPI.set_intensity(s.lightid, i)
+  LightsAPI.set_intensity(s.lightid, i)
 end
 
 #struct RandomOn <: LightSetting
